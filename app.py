@@ -441,7 +441,7 @@ def page_donor():
     if df.empty:
         st.info("No donor records found for the selected criteria.")
     else:
-        cols = ["S.No", "Donor ID", "Full Name", "Created Date", "Email", "Modified Date", "Created By", "Modified By"]
+        cols = ["S.No", "Donor ID", "Full Name", "Created Date", "Email"]
         cols = [c for c in cols if c in df.columns]
         st.dataframe(df[cols], use_container_width=True, hide_index=True)
 
