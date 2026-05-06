@@ -210,7 +210,7 @@ def fetch_donors(from_date, to_date):
             modified_date   AS "Modified Date",
             created_by      AS "Created By",
             modified_by     AS "Modified By"
-        FROM donor_table
+        FROM Donor
         WHERE created_date BETWEEN %(from_date)s AND %(to_date)s
         ORDER BY donor_id ASC;
     """
@@ -235,7 +235,7 @@ def fetch_all_donors():
             modified_date   AS "Modified Date",
             created_by      AS "Created By",
             modified_by     AS "Modified By"
-        FROM donor_table
+        FROM Donor
         ORDER BY donor_id ASC;
     """
     try:
@@ -251,15 +251,15 @@ def fetch_all_donors():
 def fetch_donations(from_date, to_date):
     sql = """
         SELECT
-            ROW_NUMBER() OVER (ORDER BY d.created_date, dn."donationid") AS s_no,
+            ROW_NUMBER() OVER (ORDER BY d.created_date, dn."DonationID") AS s_no,
             d.created_date                     AS date,
-            dn."donationid"                    AS donation_id,
+            dn."DonationID"                    AS donation_id,
             d.first_name || ' ' || d.last_name AS donor_full_name,
-            dn."donationamount"                AS donation_amount
-        FROM donation dn
-        JOIN donor_table d ON d.donor_id = dn."donorid"
+            dn."DonationAmount"                AS donation_amount
+        FROM Donation dn
+        JOIN Donor d ON d.donor_id = dn."DonorID"
         WHERE d.created_date BETWEEN %(from_date)s AND %(to_date)s
-        ORDER BY d.created_date, dn."donationid";
+        ORDER BY d.created_date, dn."DonationID";
     """
     try:
         conn = get_connection()
@@ -271,16 +271,16 @@ def fetch_donations(from_date, to_date):
 def fetch_pledges(from_date, to_date):
     sql = """
         SELECT
-            ROW_NUMBER() OVER (ORDER BY d.created_date, p."pledgeid") AS s_no,
-            p."pledgeid"                        AS pledge_id,
+            ROW_NUMBER() OVER (ORDER BY d.created_date, p."PledgeID") AS s_no,
+            p."PledgeID"                        AS pledge_id,
             d.first_name || ' ' || d.last_name  AS pledger_full_name,
             d.created_date                      AS date_added,
             d.email                             AS email,
-            p.pledgeamount                      AS pledge_amount
-        FROM pledges p
-        JOIN donor_table d ON d.donor_id = p.donorid
+            p.PledgeAmount                      AS pledge_amount
+        FROM Pledges p
+        JOIN Donor d ON d.donor_id = p.DonorID
         WHERE d.created_date BETWEEN %(from_date)s AND %(to_date)s
-        ORDER BY d.created_date, p."pledgeid";
+        ORDER BY d.created_date, p."PledgeID";
     """
     try:
         conn = get_connection()
@@ -299,9 +299,9 @@ def build_donation_table(df):
             rows += (
                 f"<tr><td>{int(row['s_no'])}</td>"
                 f"<td>{pd.to_datetime(row['date']).strftime('%d-%b-%Y')}</td>"
-                f"<td>{row['donation_id']}</td>"
+                f"<td>{row['DonationID']}</td>"
                 f"<td>{row['donor_full_name']}</td>"
-                f"<td>{float(row['donation_amount']):,.2f}</td></tr>"
+                f"<td>{float(row['DonationAmount']):,.2f}</td></tr>"
             )
         body = rows
     return (
