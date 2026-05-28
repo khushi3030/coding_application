@@ -6,7 +6,6 @@ from psycopg2.extras import RealDictCursor
 from datetime import date, datetime
 from dotenv import load_dotenv
 import io
-import streamlit.components.v1 as components
 
 load_dotenv()
 
@@ -20,6 +19,8 @@ st.set_page_config(
 # ─── Session State Init ────────────────────────────────────────────────────────
 if "page" not in st.session_state:
     st.session_state.page = "home"
+if "nav_open" not in st.session_state:
+    st.session_state.nav_open = False
 
 # ─── Global CSS ───────────────────────────────────────────────────────────────
 st.markdown("""
@@ -117,6 +118,7 @@ st.markdown("""
     #MainMenu, footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ─── DB Connection ─────────────────────────────────────────────────────────────
 @st.cache_resource
@@ -220,7 +222,7 @@ def fetch_pledges(from_date, to_date):
         st.error(f"❌ Database error: {e}")
         return pd.DataFrame()
 
-# ─── HTML Table Builders ────────────────────────────────────────────────────────
+# ─── HTML Table Builders ───────────────────────────────────────────────────────
 def build_donation_table(df):
     if df.empty:
         body = "<tr><td colspan='5' style='text-align:center;color:#c0392b;padding:20px'>No donations found for selected period.</td></tr>"
@@ -260,15 +262,176 @@ def build_pledge_table(df):
         f"</tr></thead><tbody>{body}</tbody></table>"
     )
 
-# ─── Back Button ───────────────────────────────────────────────────────────────
-def back_button():
-    if st.button("← Back to Reports", key="back"):
-        st.session_state.page = "home"
-        st.rerun()
-
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  PAGE: HOME  (HTML/CSS nav matching the screenshot)
+#  NAV  — pure st.markdown HTML/CSS (no Streamlit buttons in the nav at all)
+#  Clicking "Reports" HTML button sets ?nav=open via a query param trick,
+#  but Streamlit doesn't support that well — so we use st.markdown + st.button
+#  ONLY for the invisible trigger, and render the visual bar in pure HTML.
+# ══════════════════════════════════════════════════════════════════════════════
+def render_nav():
+
+    # ───────────────── CSS ─────────────────
+    st.markdown("""
+    <style>
+
+    /* REMOVE DEFAULT STREAMLIT BUTTON STYLING */
+    div.stButton > button {
+        width: 100%;
+        border: none !important;
+        font-family: 'DM Sans', sans-serif !important;
+        font-weight: 700 !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+
+    /* ───────── REPORTS BUTTON ───────── */
+    
+div.stButton > button[kind="secondary"] {
+
+    background: linear-gradient(135deg, #8fd14c 0%, #c4f08f 100%) !important;
+
+    color: #163000 !important;
+
+    border: 2px solid #6fb12e !important;
+
+    font-size: 22px !important;
+
+    border-radius: 14px 14px 0 0 !important;
+
+    padding: 16px 0 !important;
+
+    box-shadow: 0 4px 16px rgba(111,177,46,0.28) !important;
+}
+
+
+    div.stButton > button[kind="secondary"]:hover {
+        filter: brightness(1.05) !important;
+        transform: translateY(-1px);
+    }
+
+    /* ───────── DONOR BUTTON ───────── */
+    button[aria-label="🧑‍🤝‍🧑 Donor"] {
+
+    background: linear-gradient(135deg, #9edb72 0%, #caf0a6 100%) !important;
+
+    color: #163300 !important;
+
+    border: 2px solid #6eb13d !important;
+
+    border-radius: 0 0 0 14px !important;
+
+    font-size: 17px !important;
+
+    font-weight: 700 !important;
+
+    padding: 14px 0 !important;
+}
+
+    
+/* ───────── DONATION BUTTON ───────── */
+button[aria-label="💰 Donation"] {
+
+    background: linear-gradient(135deg, #ffb3b3 0%, #ffd6d6 100%) !important;
+
+    color: #5a1010 !important;
+
+    border: 2px solid #e57373 !important;
+
+    border-radius: 0 !important;
+
+    font-size: 17px !important;
+
+    font-weight: 700 !important;
+
+    padding: 14px 0 !important;
+
+}            
+    
+button[aria-label="🤝 Pledge"] {
+
+    background: linear-gradient(135deg, #8fe0f5 0%, #c8f4ff 100%) !important;
+
+    color: #00485c !important;
+
+    border: 2px solid #4dc8ea !important;
+
+    border-radius: 0 0 14px 0 !important;
+
+    font-size: 17px !important;
+
+    font-weight: 700 !important;
+
+    padding: 14px 0 !important;
+}
+    
+    
+            
+    
+
+    /* ───────── HOVER EFFECT ───────── */
+    div.stButton > button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.06);
+    }
+
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ───────────────── CENTER NAV ─────────────────
+    _, nav_col, _ = st.columns([1, 2, 1])
+
+    with nav_col:
+
+        # GREEN REPORTS BUTTON
+        if st.button(
+            "📊 Reports",
+            use_container_width=True,
+            key="btn_reports",
+            type="secondary"
+        ):
+            st.session_state.nav_open = not st.session_state.nav_open
+
+            if not st.session_state.nav_open:
+                st.session_state.page = "home"
+
+            st.rerun()
+
+        # SUB BUTTONS
+        if st.session_state.nav_open:
+
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+                if st.button(
+                    "🧑‍🤝‍🧑 Donor",
+                    use_container_width=True,
+                    key="btn_donor"
+                ):
+                    st.session_state.page = "donor"
+                    st.rerun()
+
+            with c2:
+                if st.button(
+                    "💰 Donation",
+                    use_container_width=True,
+                    key="btn_donation"
+                ):
+                    st.session_state.page = "donation"
+                    st.rerun()
+
+            with c3:
+                if st.button(
+                    "🤝 Pledge",
+                    use_container_width=True,
+                    key="btn_pledge"
+                ):
+                    st.session_state.page = "pledge"
+                    st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PAGE: HOME
 # ══════════════════════════════════════════════════════════════════════════════
 def page_home():
     st.markdown("<br>", unsafe_allow_html=True)
@@ -279,111 +442,15 @@ def page_home():
     )
     st.markdown(
         "<p style='text-align:center;font-size:1.1rem;color:#5a7a96;"
-        "margin-bottom:36px'>Select a report below to get started</p>",
+        "margin-bottom:36px'>Click <b>Reports</b> above to select a report</p>",
         unsafe_allow_html=True,
     )
 
-    # ── NAV HEADER (pure st.markdown — no iframe, so it actually renders) ──
-    st.markdown("""
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@700&display=swap');
-      .nav-wrap {
-        max-width: 540px;
-        margin: 0 auto 6px auto;
-      }
-      .nav-header-bar {
-        background: #8dc63f;
-        color: white;
-        font-family: 'DM Sans', sans-serif;
-        font-weight: 700;
-        font-size: 21px;
-        text-align: center;
-        padding: 14px 0;
-        border-radius: 8px 8px 0 0;
-        letter-spacing: 0.5px;
-      }
-      /* Override Streamlit button styles inside .nav-btn-row */
-      .nav-btn-row {
-        display: flex;
-        max-width: 540px;
-        margin: 0 auto;
-      }
-      /* style the three Streamlit buttons to look like coloured tabs */
-      div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
-        background: #2c2400 !important;
-        color: white !important;
-        font-family: 'DM Sans', sans-serif !important;
-        font-weight: 700 !important;
-        font-size: 17px !important;
-        border: none !important;
-        border-radius: 0 0 0 8px !important;
-        padding: 14px 0 !important;
-        width: 100% !important;
-        transition: filter .15s !important;
-      }
-      div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover {
-        filter: brightness(1.4) !important;
-        color: white !important;
-      }
-      div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-        background: #f5a623 !important;
-        color: white !important;
-        font-family: 'DM Sans', sans-serif !important;
-        font-weight: 700 !important;
-        font-size: 17px !important;
-        border: none !important;
-        border-radius: 0 !important;
-        padding: 14px 0 !important;
-        width: 100% !important;
-        transition: filter .15s !important;
-      }
-      div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover {
-        filter: brightness(1.12) !important;
-        color: white !important;
-      }
-      div[data-testid="stHorizontalBlock"] > div:nth-child(3) button {
-        background: #4dc0e8 !important;
-        color: white !important;
-        font-family: 'DM Sans', sans-serif !important;
-        font-weight: 700 !important;
-        font-size: 17px !important;
-        border: none !important;
-        border-radius: 0 0 8px 0 !important;
-        padding: 14px 0 !important;
-        width: 100% !important;
-        transition: filter .15s !important;
-      }
-      div[data-testid="stHorizontalBlock"] > div:nth-child(3) button:hover {
-        filter: brightness(1.1) !important;
-        color: white !important;
-      }
-    </style>
-    <div style="max-width:540px;margin:0 auto;">
-      <div class="nav-header-bar">Reports</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # These three buttons ARE the tabs — styled via the CSS above
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("Donor", use_container_width=True, key="nav_donor"):
-            st.session_state.page = "donor"
-            st.rerun()
-    with col2:
-        if st.button("Donation", use_container_width=True, key="nav_donation"):
-            st.session_state.page = "donation"
-            st.rerun()
-    with col3:
-        if st.button("Pledge", use_container_width=True, key="nav_pledge"):
-            st.session_state.page = "pledge"
-            st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: DONOR REPORT
 # ══════════════════════════════════════════════════════════════════════════════
 def page_donor():
-    back_button()
-
     st.markdown(
         f"""
         <div class="report-header">
@@ -397,7 +464,6 @@ def page_donor():
         unsafe_allow_html=True,
     )
 
-    # Filter mode — use columns instead of sidebar (sidebar hidden on sub-pages)
     filter_mode = st.radio(
         "Filter mode",
         ["By Created Date Range", "Show All Donors"],
@@ -439,10 +505,6 @@ def page_donor():
     else:
         df = pd.DataFrame()
 
-    if df.empty and not (filter_mode == "By Created Date Range" and not generate):
-        pass  # wait for generate click
-
-    # Metrics
     st.markdown("<br>", unsafe_allow_html=True)
     m1, m2, m3 = st.columns(3)
     with m1:
@@ -474,7 +536,6 @@ def page_donor():
         cols = ["S.No", "Donor ID", "Full Name", "Created Date", "Email"]
         cols = [c for c in cols if c in df.columns]
         st.dataframe(df[cols], use_container_width=True, hide_index=True)
-
         st.markdown("<br>", unsafe_allow_html=True)
         buf = io.StringIO()
         df.to_csv(buf, index=False)
@@ -485,12 +546,11 @@ def page_donor():
             mime="text/csv",
         )
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: DONATION REPORT
 # ══════════════════════════════════════════════════════════════════════════════
 def page_donation():
-    back_button()
-
     st.markdown(
         f"""
         <div class="report-header">
@@ -551,12 +611,11 @@ def page_donation():
     else:
         st.markdown(build_donation_table(pd.DataFrame()), unsafe_allow_html=True)
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: PLEDGE REPORT
 # ══════════════════════════════════════════════════════════════════════════════
 def page_pledge():
-    back_button()
-
     st.markdown(
         f"""
         <div class="report-header">
@@ -617,21 +676,34 @@ def page_pledge():
     else:
         st.markdown(build_pledge_table(pd.DataFrame()), unsafe_allow_html=True)
 
+
 # ─── Footer ────────────────────────────────────────────────────────────────────
 def footer():
     st.markdown("---")
     st.caption(f"Allura CRM Reporting  •  {datetime.now().strftime('%d %b %Y, %H:%M')}")
 
-# ─── Router ────────────────────────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  ROUTER — nav only on home, back button only on report pages
+# ══════════════════════════════════════════════════════════════════════════════
 page = st.session_state.page
 
 if page == "home":
+    render_nav()
     page_home()
-elif page == "donor":
-    page_donor()
-elif page == "donation":
-    page_donation()
-elif page == "pledge":
-    page_pledge()
+else:
+    # ── Back button on report pages ──
+    if st.button("← Back to Reports", key="back"):
+        st.session_state.page = "home"
+        st.session_state.nav_open = True   # re-open sub-tabs when going back
+        st.rerun()
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if page == "donor":
+        page_donor()
+    elif page == "donation":
+        page_donation()
+    elif page == "pledge":
+        page_pledge()
 
 footer()
